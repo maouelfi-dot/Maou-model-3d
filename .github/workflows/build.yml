@@ -46,14 +46,32 @@ jobs:
 
       - name: Unit tests (tidak memblokir)
         continue-on-error: true
-        run: ./gradlew :common:test --no-daemon --console=plain
+        run: ./gradlew :fabric:test --no-daemon --console=plain
 
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
           name: fox-model-loader-patched
-          path: fabric/build/libs/fox-model-loader-revival-*-fa1.21.1.jar
+          path: |
+            fabric/build/libs/fox-model-loader-revival-*-fa*.jar
+            !fabric/build/libs/*-dev-shadow.jar
+            !fabric/build/libs/*-sources.jar
           if-no-files-found: error
+
+      - name: Upload ke GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          JAR=$(ls fabric/build/libs/fox-model-loader-revival-*-fa*.jar | grep -v -e dev-shadow -e sources | head -n1)
+          test -n "$JAR" || { echo "::error::jar tidak ditemukan"; exit 1; }
+          TAG="patched-${{ github.run_number }}"
+          gh release create "$TAG" "$JAR" \
+            --target "$GITHUB_SHA" \
+            --title "Patched build #${{ github.run_number }}" \
+            --notes "Build otomatis: poly_mesh + shading halus + mode hemat RAM. Commit ${GITHUB_SHA::7}."
+          echo "Rilis dibuat: $TAG"
 
       - name: Simpan source yang sudah ter-patch ke branch
         continue-on-error: true
@@ -61,7 +79,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A common README.md
+          git add -A common fabric
           if git diff --cached --quiet; then echo "tidak ada perubahan"; else
             git commit -m "Apply poly_mesh + low-RAM fixes [skip ci]"
             git push
