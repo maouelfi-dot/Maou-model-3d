@@ -126,6 +126,12 @@ public class GeoModel {
         public final float[] packedPositions = new float[12];
         public final float[] packedUvs = new float[8];
         public float normalX, normalY, normalZ;
+        /** Optional smooth normals, 12 floats (xyz per vertex); null = flat shading with normalX/Y/Z. */
+        public float[] vertexNormals;
+
+        public float vnx(int v) { return vertexNormals != null ? vertexNormals[v * 3] : normalX; }
+        public float vny(int v) { return vertexNormals != null ? vertexNormals[v * 3 + 1] : normalY; }
+        public float vnz(int v) { return vertexNormals != null ? vertexNormals[v * 3 + 2] : normalZ; }
 
         public void setNormal(float x, float y, float z) {
             this.normalX = x;

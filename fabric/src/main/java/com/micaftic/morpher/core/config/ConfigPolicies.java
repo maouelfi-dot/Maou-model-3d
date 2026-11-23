@@ -13,7 +13,7 @@ import java.util.List;
 public final class ConfigPolicies {
     private ConfigPolicies() { }
     public static Snapshot snapshot() { return new Snapshot(render(), memory(), diagnostics(), privacy(), network()); }
-    public static RenderPolicy render() { return new RenderPolicy(bool(GeneralConfig.DISABLE_SELF_MODEL, false), bool(GeneralConfig.DISABLE_OTHER_MODEL, false), bool(GeneralConfig.DISABLE_SELF_HANDS, false), bool(GeneralConfig.DISABLE_PROJECTILE_MODEL, false), bool(GeneralConfig.DISABLE_VEHICLE_MODEL, false), bool(GeneralConfig.DISABLE_EXTERNAL_FP_ANIM, false), bool(GeneralConfig.USE_COMPATIBILITY_RENDERER, false), bool(GeneralConfig.USE_GPU_RENDERER, true), bool(GeneralConfig.DISABLE_MODEL_GLOW_IN_SHADERPACK, true), bool(GeneralConfig.ANIMATION_DISTANCE_LOD, false)); }
+    public static RenderPolicy render() { return new RenderPolicy(bool(GeneralConfig.DISABLE_SELF_MODEL, false), bool(GeneralConfig.DISABLE_OTHER_MODEL, false), bool(GeneralConfig.DISABLE_SELF_HANDS, false), bool(GeneralConfig.DISABLE_PROJECTILE_MODEL, false), bool(GeneralConfig.DISABLE_VEHICLE_MODEL, false), bool(GeneralConfig.DISABLE_EXTERNAL_FP_ANIM, false), bool(GeneralConfig.USE_COMPATIBILITY_RENDERER, false), bool(GeneralConfig.USE_GPU_RENDERER, true), bool(GeneralConfig.DISABLE_MODEL_GLOW_IN_SHADERPACK, true), bool(GeneralConfig.ANIMATION_DISTANCE_LOD, false) || isLowMemoryHeap()); }
     /** Face-cull escape hatch; default false keeps upstream bake semantics. */
     public static boolean disableModelFaceCulling() {
         return bool(GeneralConfig.DISABLE_MODEL_FACE_CULLING, false);
@@ -33,7 +33,25 @@ public final class ConfigPolicies {
         return style == null ? GeneralConfig.ModelPickerStyle.AUTO : style;
     }
 
-    public static MemoryPolicy memory() { return new MemoryPolicy(integer(GeneralConfig.AUDIO_CACHE_MAX_BYTES, 64 * 1024 * 1024), integer(GeneralConfig.MAX_CACHED_GPU_MODELS, 0), bool(GeneralConfig.LAZY_MODEL_LOADING, true), integer(GeneralConfig.MAX_RESIDENT_CPU_MODELS, 64), integer(GeneralConfig.UNUSED_MODEL_TTL_SECONDS, 300)); }
+    public static MemoryPolicy memory() {
+        int audioCache = integer(GeneralConfig.AUDIO_CACHE_MAX_BYTES, 64 * 1024 * 1024);
+        int gpuModels = integer(GeneralConfig.MAX_CACHED_GPU_MODELS, 0);
+        int cpuModels = integer(GeneralConfig.MAX_RESIDENT_CPU_MODELS, 64);
+        int ttlSeconds = integer(GeneralConfig.UNUSED_MODEL_TTL_SECONDS, 300);
+        if (isLowMemoryHeap()) {
+            // HP RAM kecil (mis. 2 GB): simpan lebih sedikit model/audio di memori dan lepas lebih cepat.
+            audioCache = Math.min(audioCache, 8 * 1024 * 1024);
+            gpuModels = gpuModels <= 0 ? 4 : Math.min(gpuModels, 4); // 0 = tak terbatas
+            cpuModels = Math.min(cpuModels, 6);
+            ttlSeconds = Math.min(ttlSeconds, 60);
+        }
+        return new MemoryPolicy(audioCache, gpuModels, bool(GeneralConfig.LAZY_MODEL_LOADING, true), cpuModels, ttlSeconds);
+    }
+
+    /** True bila heap maksimum JVM <= 1,5 GB (umum di HP 2 GB yang menjalankan Minecraft). */
+    public static boolean isLowMemoryHeap() {
+        return Runtime.getRuntime().maxMemory() <= 1536L * 1024L * 1024L;
+    }
     public static DiagnosticsPolicy diagnostics() { return new DiagnosticsPolicy(bool(GeneralConfig.ANIMATION_FRAME_PROFILER, false), bool(GeneralConfig.ANIMATION_DEBUG_LOG, false), bool(GeneralConfig.WARN_REPEATED_ANIMATION_EVALUATION, true), bool(GeneralConfig.RESOURCE_STATION_MONITOR_LOG, false), bool(GeneralConfig.NETWORK_ONLINE_DEBUG_LOG, false), bool(GeneralConfig.MODEL_MEMORY_PROFILER, false), bool(GeneralConfig.MODEL_IMPORT_PERFORMANCE_LOG, false), bool(GeneralConfig.INPUT_STATE_DEBUG_LOG, false)); }
     public static PrivacyPolicy privacy() { return new PrivacyPolicy(bool(GeneralConfig.PRIVACY_MODE, false)); }
     public static NetworkPolicy network() { return new NetworkPolicy(value(ServerConfig.DEFAULT_MODEL_ID, "default"), value(ServerConfig.DEFAULT_MODEL_TEXTURE, "default"), bool(ServerConfig.CAN_SWITCH_MODEL, true), bool(ServerConfig.ALLOW_MODEL_UPLOAD, true), integer(ServerConfig.MODEL_UPLOAD_MAX_MB, 128), integer(ServerConfig.MODEL_UPLOAD_CHUNKS_PER_TICK, 4), List.copyOf(value(ServerConfig.CLIENT_NOT_DISPLAY_MODELS, List.of())), integer(ServerConfig.THREAD_COUNT, 0), bool(ServerConfig.ENABLE_GLOBAL_BANDWIDTH_LIMIT, false), integer(ServerConfig.BANDWIDTH_LIMIT, 5), integer(ServerConfig.PLAYER_SYNC_TIMEOUT, 0), bool(ServerConfig.LOW_BANDWIDTH_USAGE, false), integer(ServerConfig.ACCEPT_SOUND_FX, 0)); }

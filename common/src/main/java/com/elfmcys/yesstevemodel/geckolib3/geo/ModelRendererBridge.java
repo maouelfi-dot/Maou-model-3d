@@ -272,10 +272,12 @@ public class ModelRendererBridge {
                     if (useJavaVector) {
                         JdkVectorModelMath.transformQuadPositions(quad, globalBoneMat, scratch.vectorX, scratch.vectorY, scratch.vectorZ);
                         for (int v = 0; v < 4; v++) {
+                            if (quad.vertexNormals != null) { tempNorm.set(quad.vnx(v), quad.vny(v), quad.vnz(v)).mul(globalNormalMat).normalize(); }
                             vertexConsumer.addVertex(scratch.vectorX[v], scratch.vectorY[v], scratch.vectorZ[v], ((int)(a * 255) << 24) | ((int)(r * 255) << 16) | ((int)(g * 255) << 8) | (int)(b * 255), quad.u(v), quad.v(v), packedOverlay, currentPackedLight, tempNorm.x(), tempNorm.y(), tempNorm.z());
                         }
                     } else {
                         for (int v = 0; v < 4; v++) {
+                            if (quad.vertexNormals != null) { tempNorm.set(quad.vnx(v), quad.vny(v), quad.vnz(v)).mul(globalNormalMat).normalize(); }
                             tempPos.set(quad.x(v), quad.y(v), quad.z(v), 1.0f).mul(globalBoneMat);
                             vertexConsumer.addVertex(tempPos.x(), tempPos.y(), tempPos.z(), ((int)(a * 255) << 24) | ((int)(r * 255) << 16) | ((int)(g * 255) << 8) | (int)(b * 255), quad.u(v), quad.v(v), packedOverlay, currentPackedLight, tempNorm.x(), tempNorm.y(), tempNorm.z());
                         }

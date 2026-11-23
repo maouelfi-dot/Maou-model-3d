@@ -35,14 +35,14 @@ final class GpuMeshDataBuilder {
             for (GeoModel.BakedCube cube : bone.cubes) {
                 for (GeoModel.BakedQuad quad : cube.quads) {
                     int vertexOffset = vertices.position() / GpuMeshData.VERTEX_STRIDE;
-                    int normal = packNormal(quad.normalX, quad.normalY, quad.normalZ);
+                    int flatNormal = packNormal(quad.normalX, quad.normalY, quad.normalZ);
                     for (int v = 0; v < 4; v++) {
                         vertices.putFloat(quad.x(v));
                         vertices.putFloat(quad.y(v));
                         vertices.putFloat(quad.z(v));
                         vertices.putFloat(quad.u(v));
                         vertices.putFloat(quad.v(v));
-                        vertices.putInt(normal);
+                        vertices.putInt(quad.vertexNormals == null ? flatNormal : packNormal(quad.vnx(v), quad.vny(v), quad.vnz(v)));
                         vertices.putShort((short) (boneIdx & 0xFFFF));
                         vertices.put((byte) (bone.partMask & 0xFF));
                         vertices.put((byte) (cube.cullable ? 1 : 0));

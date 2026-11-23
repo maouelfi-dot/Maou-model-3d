@@ -74,6 +74,8 @@ public class RawYsmModel {
 
     public static class RawFace {
         public float[] normal = new float[3];
+        /** Optional smooth normals, 12 floats (xyz per vertex); null = flat shading with {@link #normal}. */
+        public float[] vertexNormals;
         public float[][] positions = new float[4][3]; //4 個頂點的 xyz 座標
         public float[] u = new float[4];
         public float[] v = new float[4];

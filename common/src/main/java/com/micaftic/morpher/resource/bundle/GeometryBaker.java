@@ -110,6 +110,9 @@ public final class GeometryBaker {
 
                     GeoModel.BakedQuad bq = new GeoModel.BakedQuad();
                     bq.setNormal(rf.normal[0], rf.normal[1], rf.normal[2]);
+                    if (rf.vertexNormals != null && rf.vertexNormals.length >= 12) {
+                        bq.vertexNormals = rf.vertexNormals;
+                    }
                     for (int i = 0; i < 4; i++) {
                         float px = rf.positions[i][0];
                         float py = rf.positions[i][1];

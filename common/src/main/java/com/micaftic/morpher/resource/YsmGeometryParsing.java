@@ -175,10 +175,66 @@ public final class YsmGeometryParsing {
                         bone.cubes.add(cube);
                     }
                 }
+                bakePolyMesh(bone, bObj, geo.textureWidth, geo.textureHeight);
                 geo.bones.add(bone);
             }
         }
         return geo;
+    }
+
+    /**
+     * Bedrock {@code poly_mesh} support (Blockbench mesh export, glTF converted models).
+     * Previously only {@code cubes} were read, so mesh-only models loaded but rendered nothing.
+     */
+    private static void bakePolyMesh(RawYsmModel.RawBone bone, JsonObject bObj, float texW, float texH) {
+        if (!bObj.has("poly_mesh") || !bObj.get("poly_mesh").isJsonObject()) return;
+        JsonObject pm = bObj.getAsJsonObject("poly_mesh");
+        if (!pm.has("positions") || !pm.get("positions").isJsonArray()
+                || !pm.has("polys") || !pm.get("polys").isJsonArray()) {
+            System.err.println("[SM] poly_mesh of bone '" + bone.name
+                    + "' has no positions/polys arrays (tri_list/quad_list is not supported), skipped");
+            return;
+        }
+        float[][] positions = readFloatRows(pm.getAsJsonArray("positions"), 3);
+        float[][] uvs = pm.has("uvs") && pm.get("uvs").isJsonArray()
+                ? readFloatRows(pm.getAsJsonArray("uvs"), 2) : new float[0][];
+        boolean normalized = pm.has("normalized_uvs") && pm.get("normalized_uvs").isJsonPrimitive()
+                && pm.get("normalized_uvs").getAsBoolean();
+
+        JsonArray polyArr = pm.getAsJsonArray("polys");
+        int[][][] polys = new int[polyArr.size()][][];
+        for (int i = 0; i < polyArr.size(); i++) {
+            JsonElement pe = polyArr.get(i);
+            if (!pe.isJsonArray()) { polys[i] = new int[0][]; continue; }
+            JsonArray va = pe.getAsJsonArray();
+            polys[i] = new int[va.size()][];
+            for (int j = 0; j < va.size(); j++) {
+                JsonElement ve = va.get(j);
+                if (ve.isJsonArray()) {
+                    JsonArray ia = ve.getAsJsonArray();
+                    int[] idx = new int[ia.size()];
+                    for (int k = 0; k < idx.length; k++) idx[k] = ia.get(k).getAsInt();
+                    polys[i][j] = idx;
+                } else if (ve.isJsonPrimitive()) {
+                    polys[i][j] = new int[]{ve.getAsInt(), -1, -1};
+                } else {
+                    polys[i][j] = new int[0];
+                }
+            }
+        }
+        bone.cubes.addAll(PolyMeshBaker.bake(positions, uvs, polys, normalized, texW, texH));
+    }
+
+    private static float[][] readFloatRows(JsonArray arr, int width) {
+        float[][] rows = new float[arr.size()][];
+        for (int i = 0; i < arr.size(); i++) {
+            JsonElement e = arr.get(i);
+            if (!e.isJsonArray() || e.getAsJsonArray().size() < width) { rows[i] = null; continue; }
+            JsonArray r = e.getAsJsonArray();
+            rows[i] = new float[width];
+            for (int k = 0; k < width; k++) rows[i][k] = r.get(k).getAsFloat();
+        }
+        return rows;
     }
 
     public static RawYsmModel.RawGeometry parseGeometry(byte[] data, int modelType) {
